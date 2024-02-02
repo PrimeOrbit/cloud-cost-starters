@@ -1,0 +1,273 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+    POUserName:
+      Description: Name of the user which PrimeOrbit appliction will be used.
+      AllowedPattern: (?=^.{3,50}$)(^[a-z0-9]+[a-z0-9\\-]+[a-z0-9]+$)
+      Default: primeorbit-app-user
+      Type: String
+    POGroupName:
+      Description: Name of the user group, in which PrimeOrbit user will be added to.
+      AllowedPattern: (?=^.{3,50}$)(^[a-z0-9]+[a-z0-9\\-]+[a-z0-9]+$)
+      Default: primeorbit-app-group
+      Type: String
+    PORoleName:
+      Description: Name of the PrimeOrbit user role.
+      AllowedPattern: (?=^.{2,30}$)(^[a-z0-9]+[a-z0-9\\-]+[a-z0-9]+$)
+      Default: primeorbit-app-role
+      Type: String    
+ 
+Resources:
+  POUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: { "Ref" : "POUserName" }
+      Tags: 
+        - Key: "Application"
+          Value: "PrimeOrbit"
+  POGroup:
+    DependsOn: "POUser"
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: { "Ref" : "POGroupName" }
+  AddUserToGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref POGroup
+      Users: 
+        - { "Ref" : "POUserName" }
+  PORole:
+    DependsOn: "POGroup"
+    Type: AWS::IAM::Role
+    Properties:
+      Description: PrimeOrbit role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Fn::Sub: '${AWS::AccountId}'
+            Action:
+              - 'sts:AssumeRole'
+              - 'sts:TagSession'
+      RoleName: { "Ref" : "PORoleName" }
+      Tags: 
+        - Key: "Application"
+          Value: "PrimeOrbit"
+#### Policies start
+####
+  RolePoliciesReadOnlyServices:
+        DependsOn: "POGroup"
+        Type: "AWS::IAM::GroupPolicy"
+        Properties:
+            PolicyName: "primeorbit-ro-services-properties"
+            GroupName: { "Ref" : "POGroupName" }
+            PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    - Effect: "Allow"
+                      Action:
+                      # ORG 
+                        - "organizations:Describe*"
+                        - "organizations:List*"
+                      # COMPUTE 
+                        - "ec2:Describe*"
+                        - "ec2:Get*"
+                        - "ec2:List*"
+                        - "ec2:Search*"
+                        - "autoscaling:Describe*"
+                        - "autoscaling:Get*"
+                        - "autoscaling-plans:Describe*"
+                        - "autoscaling-plans:Get*"
+                        - "compute-optimizer:Describe*"
+                        - "compute-optimizer:Get*"
+                        - "compute-optimizer:Export*"
+                        - "compute-optimizer:Update*"
+                      # COST EXPLORER
+                        - "ce:Describe*"
+                        - "ce:Get*"
+                        - "ce:List*"
+                        - "savingsplans:Describe*"
+                        - "savingsplans:List*"
+                      # DATABASES
+                        - "dynamodb:Describe*"
+                        - "dynamodb:Get*"
+                        - "dynamodb:List*"
+                        - "dax:Describe*"
+                        - "dax:Get*"
+                        - "dax:List*"
+                        - "glacier:Describe*"
+                        - "glacier:Get*"
+                        - "glacier:List*"
+                        - "rds:Describe*"
+                        - "rds:List*"
+                        - "cassandra:Select"
+                      # S3
+                        - "s3:ListAllMyBuckets"
+                        - "s3:GetBucket*"
+                        - "s3:ListStorageLensConfigurations"
+                        - "s3:GetEncryptionConfiguration"
+                        - "s3:GetIntelligentTieringConfiguration"
+                        - "s3:GetInventoryConfiguration"
+                        - "s3:GetJobTagging"
+                        - "s3:GetLifecycleConfiguration"
+                        - "s3:GetMetricsConfiguration"
+                        - "s3-outposts:Get*"
+                        - "s3-outposts:List*"
+                        - "s3-object-lambda:Get*"
+                        - "s3-object-lambda:List*"
+                      # LAMBDA
+                        - "lambda:Get*"
+                        - "lambda:List*"
+                      # OPEN SEARCH
+                        - "aoss:Get*"
+                        - "aoss:List*"
+                        - "es:Describe*"
+                        - "es:Get*"
+                        - "es:List*"
+                        - "elasticache:Describe*"
+                        - "elasticache:List*"
+                        - "elasticloadbalancing:Describe*"
+                        - "ecs:Describe*"
+                        - "ecs:Get*"
+                        - "ecs:List*"
+                      # STEP FUNCTION
+                        - "states:ListExecutions"
+                        - "states:DescribeExecution"
+                        - "states:DescribeMapRun"
+                        - "states:GetExecutionHistory"
+                      # TRUSTED ADVISOR                       
+                        - "trustedadvisor:Get*"
+                        - "trustedadvisor:List*"
+                        - "support:Describe*"
+                        - "support:RefreshTrustedAdvisorCheck"
+                      # RESOURCE EXPLORER
+                        - "resource-explorer-2:Get*"
+                        - "resource-explorer-2:List*"
+                        - "resource-explorer-2:Search"
+                        - "resource-explorer-2:BatchGetView"
+                        - "ram:List*"
+                        - "ram:Get*"
+                      # CLOUD WATCH
+                        - "cloudwatch:Describe*"
+                        - "cloudwatch:Get*"
+                        - "cloudwatch:List*"
+                      # ELASTIC and EBS
+                        - "elasticfilesystem:Describe*"
+                        - "elasticfilesystem:List*"
+                        - "ebs:Get*"
+                        - "ebs:List*"
+                      # CLOUD TRAIL
+                        - "cloudtrail:Describe*"
+                        - "cloudtrail:Get*"
+                        - "cloudtrail:List*"
+                        - "cloudtrail:Lookup*"
+                        - "cloudtrail:StartQuery"
+                        - "cloudtrail:CancelQuery"
+                      # ROUTE 53
+                        - "route53:Get*"
+                        - "route53:List*"
+                      # AIR FLOW
+                        - "airflow:Get*"
+                        - "airflow:List*"
+                      # REDSHIFT
+                        - "redshift:Describe*"
+                        - "redshift:Get*"
+                        - "redshift:List*"
+                        - "redshift-serverless:Get*"
+                        - "redshift-serverless:List*"
+                        - "application-autoscaling:DescribeScalableTargets"
+                        - "application-autoscaling:DescribeScalingActivities"
+                        - "application-autoscaling:DescribeScalingPolicies"
+                        - "application-autoscaling:DescribeScheduledActions"
+                      # EKS
+                        - "eks:Describe*"
+                        - "eks:List*"
+                      # LightSail
+                        - "lightsail:Get*"
+                      # Kafka
+                        - "kafka:Describe*"
+                        - "kafka:Get*"
+                        - "kafka:List*"
+                      # Kafka
+                        - "quicksight:Describe*"
+                        - "quicksight:Get*"
+                        - "quicksight:List*"
+                      # Workspaces
+                        - "workspaces:Describe*"
+                        - "workspaces:List*"
+                      # ECR
+                        - "ecr:Describe*"
+                        - "ecr:List*"
+                        - "ecr:Get*"
+                        - "ecr:Batch*"
+                      # CloudFront
+                        - "cloudfront:Get*"
+                        - "cloudfront:List*"
+                      # SNS
+                        - "sns:Get*"
+                        - "sns:List*"
+                      # SageMaker
+                        - "sagemaker:Describe*"
+                        - "sagemaker:List*"
+                      # ACM
+                        - "acm:Get*"
+                        - "acm:List*"
+                        - "acm:Describe*"
+                      # Kinesis
+                        - "kinesis:Get*"
+                        - "kinesis:List*"
+                        - "kinesis:Describe*"
+                      # Elastic Map Reduce
+                        - "elasticmapreduce:List*"
+                        - "elasticmapreduce:Describe*"
+                        - "sdb:Select"
+                      # WAF
+                        - "waf:Get*"
+                        - "waf:List*"
+                      # API Gateway
+                        - "apigateway:Get*"
+                      # KMS
+                        - "kms:Get*"
+                        - "kms:List*"
+                      # SQS
+                        - "sqs:ListQueues"
+                      # Service Catalog
+                        - "servicecatalog:List*"
+                      Resource:
+                        - "*"                      
+                    - Effect: "Deny"
+                      Action:
+                        - "dynamodb:GetItem*"
+                        - "dynamodb:GetRecords"
+                        - "dynamodb:GetShardIterator"
+                        - "dax:GetItem*"
+                        - "ec2:GetConsoleOutput"
+                        - "ec2:GetPasswordData"
+                        - "ec2:GetConsoleScreenshot"
+                        - "ec2:GetInstanceUefiData"
+                        - "states:ListExecutions"
+                        - "states:DescribeExecution"
+                        - "states:DescribeMapRun"
+                        - "states:GetExecutionHistory"
+                        - "redshift:ListSavedQueries"
+                        - "redshift:DescribeHsmClientCertificates"
+                        - "redshift:DescribeHsmClientCertificates"
+                        - "redshift:DescribeSavedQueries"
+                        - "redshift:DescribeQuery"
+                        - "ec2:GetConsoleOutput"
+                        - "ec2:GetPasswordData"
+                        - "ec2:GetConsoleScreenshot"
+                        - "ec2:GetInstanceUefiData"
+                      Resource:
+                        - "*"
+####             
+#### Policies end
+#Outputs:
+#  AccessKeyId:
+#    Value: !Ref POUserAccessKey
+#    Description: "Access Key ID for POUser"
+#
+#  SecretAccessKey:
+#    Value: !GetAtt POUserAccessKey.SecretAccessKey
+#    Description: "Secret Access Key for POUser"

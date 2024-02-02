@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+    ReportName:
+        Type: String
+        Default: cur
+        Description: New report name. You can update it to any unique name.
+    ReportPrefix:
+        Type: String
+        Default: dailyreports
+        Description: New report prefix
+    BucketName:
+      Description: The name of the bucket where the cost and usage reports will be stored.
+      AllowedPattern: (?=^.{3,63}$)(^[a-z0-9]+[a-z0-9\\-]+[a-z0-9]+$)
+      Default: curreports
+      Type: String   
+ 
+Resources:
+  CostUsageReportBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain    
+    Properties:
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+        - Id: ExpireOldObjects
+          Status: Enabled
+          ExpirationInDays: 200
+      BucketName:
+        Ref: BucketName
+  CostUsageReportBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: CostUsageReportBucket
+    DeletionPolicy: Retain
+    Properties: 
+      Bucket:
+          Ref: CostUsageReportBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 's3:GetBucketAcl'
+              - 's3:GetBucketPolicy'
+              - 's3:ListBucket'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref CostUsageReportBucket
+            Principal:
+                Service: "billingreports.amazonaws.com"
+          - Action:
+              - 's3:PutObject'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref CostUsageReportBucket
+                - /*
+            Principal:
+                Service: "billingreports.amazonaws.com"
+          - Action:
+              - 's3:*'
+            Effect: "Deny"
+            Principal: "*"
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref CostUsageReportBucket
+                - /*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+  CostUsageReport:
+        DependsOn:
+        - CostUsageReportBucketPolicy
+        Type: AWS::CUR::ReportDefinition
+        DeletionPolicy: Retain
+        Properties: 
+            AdditionalArtifacts: []
+            AdditionalSchemaElements: 
+                - RESOURCES
+            Compression: GZIP
+            Format: textORcsv
+            RefreshClosedReports: True
+            ReportName:
+                Ref: ReportName
+            ReportVersioning: CREATE_NEW_REPORT
+            S3Bucket:
+                Ref: CostUsageReportBucket
+            S3Prefix:
+                Ref: ReportPrefix
+            S3Region:
+                Ref: AWS::Region
+            TimeUnit: DAILY 
+Outputs:
+  ReportName:
+    Value: !Ref ReportName
+    Description: "CUR Report Name"
+
+  BucketName:
+    Value: !Ref BucketName
+    Description: "CUR Report S3 Bucket"
